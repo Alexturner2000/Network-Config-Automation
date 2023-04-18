@@ -1,42 +1,53 @@
-import sys
+import pandas as pd
 from netmiko import ConnectHandler
 from getpass import getpass
 
+def extract_device_data(df):
+    """Extract device data from a DataFrame and return as lists"""
+    ip_addresses = []
+    device_types = []
 
-with open('devices.txt', 'r') as file:
-    devices = file.readlines()
+    for index in range(0, len(df)):
+        ip_address = df.iloc[index, 0]  # Extract data from column A at current row
+        device_type = df.iloc[index, 1]  # Extract data from column B at current row
+        ip_addresses.append(ip_address)  # Append to ip_addresses list
+        device_types.append(device_type)  # Append to device_types list
 
-# Prompt user for username and password
-username = input("Enter the username: ")
-password = getpass("Enter the password: ")
+    return ip_addresses, device_types
 
-
-for device_line in devices:
-    device_info = device_line.strip().split(',')
-    device_type = device_info[0]
-    ip_address = device_info[1]
-
-    # Define device dictionary based on read and input data
-    device = {
-        'device_type': device_type,
-        'ip': ip_address,
-        'username': username,
-        'password': password,
-    }
-
+def connect_to_device(device_type, ip_address, username, password):
+    """Function to connect to a device and perform operations"""
     try:
-        # Connect to the device
-        net_connect = ConnectHandler(**device)
-        print("Connected to device:", ip_address)
+        device = {
+            "device_type": device_type,
+            "ip": ip_address,
+            "username": username,
+            "password": password,
+        }
 
-        # Send commands and retrieve output
-        commands = ["show interfaces", "show interfaces description"]
-        for command in commands:
-            output = net_connect.send_command(command)
-            print("Output of command", command, ":\n", output)
-
-        # Close the SSH session
-        net_connect.disconnect()
-
+        connection = ConnectHandler(**device)
+        print(f"Successfully connected to {ip_address} ({device_type})")
+        # Perform operations on the device here
+        # ...
+        connection.disconnect()  # Disconnect from the device
+        print(f"Disconnected from {ip_address} ({device_type})")
     except Exception as e:
-        print("Error connecting to device", ip_address + ":", str(e))
+        print(f"Failed to connect to {ip_address} ({device_type}): {e}")
+
+def main():
+    # Read data from the spreadsheet
+    df = pd.read_excel("devices.xlsx")
+
+    # Extract data from all rows except the first row
+    ip_addresses, device_types = extract_device_data(df.iloc[1:, :])
+
+    # Prompt user for username and password
+    username = input("Enter your username: ")
+    password = getpass("Enter your password: ")
+
+    # Connect to devices
+    for i in range(len(ip_addresses)):
+        connect_to_device(device_types[i], ip_addresses[i], username, password)
+
+if __name__ == "__main__":
+    main()
