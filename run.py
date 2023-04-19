@@ -1,6 +1,7 @@
 import pandas as pd
 from netmiko import ConnectHandler
 from getpass import getpass
+from concurrent.futures import ThreadPoolExecutor
 
 def extract_device_data(df):
     """Extract device data from a DataFrame and return as lists"""
@@ -46,8 +47,13 @@ def main():
     password = getpass("Enter your password: ")
 
     # Connect to devices
-    for i in range(len(ip_addresses)):
-        connect_to_device(device_types[i], ip_addresses[i], username, password)
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for i in range(len(ip_addresses)):
+            futures.append(executor.submit(connect_to_device, device_types[i], ip_addresses[i], username, password))
+        
+        for future in futures:
+            future.result()
 
 if __name__ == "__main__":
     main()
